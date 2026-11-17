@@ -1,4 +1,5 @@
 import { MODULE_BY_KEY } from '@/data/modules'
+import { validateRuleRow } from '@/data/alert-rules'
 import { allRows, listRows, resetRows, saveRows } from '@/data/local-store'
 import type { ActionResult, EntryRow, ModuleMeta, OverviewResult, PageResult } from '@/data/types'
 
@@ -43,6 +44,13 @@ export function runAction(key: string, id: number, action: string): ActionResult
   if (current === target) {
     return { ok: false, message: `${meta.entity}已经是「${target}」，不用重复操作` }
   }
+  // 预警规则启用前先按判定口径校验，越界条件不允许进入可判定状态。
+  if (key === 'alert' && target === '已启用') {
+    const invalid = validateRuleRow(rows[index])
+    if (invalid) {
+      return { ok: false, message: `预警规则无法启用：${invalid}` }
+    }
+  }
   const lastStatus = meta.statuses[meta.statuses.length - 1]
   const updated: EntryRow = {
     ...rows[index],
@@ -53,7 +61,7 @@ export function runAction(key: string, id: number, action: string): ActionResult
   const next = [...rows]
   next[index] = updated
   saveRows(key, next)
-  return { ok: true, message: `${meta.entity}已${action}，当前状态「${target}」` }
+  return { ok: true, message: `${meta.entity}「${rows[index]['规则编号'] ?? id}」已${action}，当前状态「${target}」` }
 }
 
 export function resetModule(key: string): PageResult {
